@@ -3,10 +3,15 @@ name = "sigmaos_omarchy"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "SigmaOS omarchy component inspired by Linux Mint / Omarchy / Arch Linux."
+description = "SigmaOS Omarchy CLI — `omarchy doctor`, `theme`, and `run` subcommands."
+repository = "https://github.com/AaryanSinghChauhan09/SigmaOS-omarchy"
 
 [dependencies]
 
 [lib]
 name = "sigmaos_omarchy"
 path = "src/lib.rs"
+
+[[bin]]
+name = "omarchy"
+path = "src/main.rs"
