@@ -10,11 +10,19 @@ use std::fmt;
 
 /// Severity of a check result.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Severity { Pass, Warn, Fail }
+pub enum Severity {
+    Pass,
+    Warn,
+    Fail,
+}
 
 impl Severity {
     pub fn as_str(self) -> &'static str {
-        match self { Self::Pass => "PASS", Self::Warn => "WARN", Self::Fail => "FAIL" }
+        match self {
+            Self::Pass => "PASS",
+            Self::Warn => "WARN",
+            Self::Fail => "FAIL",
+        }
     }
 }
 
@@ -29,13 +37,28 @@ pub struct CheckResult {
 
 impl CheckResult {
     fn pass(name: &'static str, detail: impl Into<String>) -> Self {
-        Self { name, severity: Severity::Pass, detail: detail.into(), fix: None }
+        Self {
+            name,
+            severity: Severity::Pass,
+            detail: detail.into(),
+            fix: None,
+        }
     }
     fn warn(name: &'static str, detail: impl Into<String>, fix: &'static str) -> Self {
-        Self { name, severity: Severity::Warn, detail: detail.into(), fix: Some(fix) }
+        Self {
+            name,
+            severity: Severity::Warn,
+            detail: detail.into(),
+            fix: Some(fix),
+        }
     }
     fn fail(name: &'static str, detail: impl Into<String>, fix: &'static str) -> Self {
-        Self { name, severity: Severity::Fail, detail: detail.into(), fix: Some(fix) }
+        Self {
+            name,
+            severity: Severity::Fail,
+            detail: detail.into(),
+            fix: Some(fix),
+        }
     }
 }
 
@@ -63,17 +86,29 @@ pub fn doctor(f: &SystemFacts) -> Vec<CheckResult> {
     out.push(if f.wayland_session {
         CheckResult::pass("wayland-session", "running under Wayland")
     } else {
-        CheckResult::fail("wayland-session", "not a Wayland session", "log in via Hyprland session")
+        CheckResult::fail(
+            "wayland-session",
+            "not a Wayland session",
+            "log in via Hyprland session",
+        )
     });
     out.push(if f.hyprland_running {
         CheckResult::pass("hyprland", "compositor running")
     } else {
-        CheckResult::fail("hyprland", "compositor not detected", "start Hyprland or check logs")
+        CheckResult::fail(
+            "hyprland",
+            "compositor not detected",
+            "start Hyprland or check logs",
+        )
     });
     out.push(if f.waybar_running {
         CheckResult::pass("waybar", "panel running")
     } else {
-        CheckResult::warn("waybar", "panel not running", "omarchy-refresh or restart waybar")
+        CheckResult::warn(
+            "waybar",
+            "panel not running",
+            "omarchy-refresh or restart waybar",
+        )
     });
 
     // desktop state
@@ -87,7 +122,11 @@ pub fn doctor(f: &SystemFacts) -> Vec<CheckResult> {
     out.push(if f.audio_server {
         CheckResult::pass("audio", "PipeWire/PulseAudio running")
     } else {
-        CheckResult::warn("audio", "no audio server detected", "systemctl --user start pipewire")
+        CheckResult::warn(
+            "audio",
+            "no audio server detected",
+            "systemctl --user start pipewire",
+        )
     });
     out.push(if f.network_up {
         CheckResult::pass("network", "link up")
@@ -96,30 +135,47 @@ pub fn doctor(f: &SystemFacts) -> Vec<CheckResult> {
     });
 
     // disk
-    let used_pct = if f.disk_total_gib > 0 {
-        100 - (f.disk_free_gib * 100 / f.disk_total_gib)
-    } else { 0 };
+    let used_pct = f
+        .disk_total_gib
+        .checked_div(1) // guard: checked_div on total; real guard below
+        .filter(|_| f.disk_total_gib > 0)
+        .map(|_| 100u64.saturating_sub(f.disk_free_gib * 100 / f.disk_total_gib))
+        .unwrap_or(0);
     out.push(if used_pct < 85 {
-        CheckResult::pass("disk", format!("{} GiB free of {}", f.disk_free_gib, f.disk_total_gib))
+        CheckResult::pass(
+            "disk",
+            format!("{} GiB free of {}", f.disk_free_gib, f.disk_total_gib),
+        )
     } else if used_pct < 95 {
         CheckResult::warn("disk", format!("{}% full", used_pct), "clean package cache")
     } else {
-        CheckResult::fail("disk", format!("{}% full", used_pct), "free space immediately")
+        CheckResult::fail(
+            "disk",
+            format!("{}% full", used_pct),
+            "free space immediately",
+        )
     });
 
     // updates
     out.push(if f.updates_pending == 0 {
         CheckResult::pass("updates", "system up to date")
     } else {
-        CheckResult::warn("updates", format!("{} packages pending", f.updates_pending),
-            "omarchy update")
+        CheckResult::warn(
+            "updates",
+            format!("{} packages pending", f.updates_pending),
+            "omarchy update",
+        )
     });
 
     // security
     out.push(if f.secure_boot {
         CheckResult::pass("secure-boot", "enabled")
     } else {
-        CheckResult::warn("secure-boot", "disabled", "enable in firmware for measured boot")
+        CheckResult::warn(
+            "secure-boot",
+            "disabled",
+            "enable in firmware for measured boot",
+        )
     });
 
     // battery (only if present)
@@ -136,7 +192,11 @@ pub fn doctor(f: &SystemFacts) -> Vec<CheckResult> {
 
 /// Doctor summary: counts by severity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct DoctorSummary { pub pass: usize, pub warn: usize, pub fail: usize }
+pub struct DoctorSummary {
+    pub pass: usize,
+    pub warn: usize,
+    pub fail: usize,
+}
 
 pub fn summarize(results: &[CheckResult]) -> DoctorSummary {
     let mut s = DoctorSummary::default();
@@ -155,7 +215,9 @@ pub fn render(results: &[CheckResult]) -> String {
     let mut out = String::new();
     for r in results {
         let mark = match r.severity {
-            Severity::Pass => "[ ok ]", Severity::Warn => "[warn]", Severity::Fail => "[FAIL]",
+            Severity::Pass => "[ ok ]",
+            Severity::Warn => "[warn]",
+            Severity::Fail => "[FAIL]",
         };
         out.push_str(&format!("{} {:<16} {}\n", mark, r.name, r.detail));
         if let Some(fix) = r.fix {
@@ -163,7 +225,10 @@ pub fn render(results: &[CheckResult]) -> String {
         }
     }
     let s = summarize(results);
-    out.push_str(&format!("\n{} passed, {} warnings, {} failures\n", s.pass, s.warn, s.fail));
+    out.push_str(&format!(
+        "\n{} passed, {} warnings, {} failures\n",
+        s.pass, s.warn, s.fail
+    ));
     out
 }
 
@@ -186,9 +251,18 @@ pub struct Wizard {
     pub answers: Vec<(WizardStep, String)>,
 }
 
+impl Default for Wizard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Wizard {
     pub fn new() -> Self {
-        Self { step: WizardStep::Welcome, answers: vec![] }
+        Self {
+            step: WizardStep::Welcome,
+            answers: vec![],
+        }
     }
     pub fn next(&mut self) {
         self.step = match self.step {
@@ -217,7 +291,9 @@ impl Wizard {
         self.answers.push((self.step, value.into()));
         self.next();
     }
-    pub fn finished(&self) -> bool { self.step == WizardStep::Done }
+    pub fn finished(&self) -> bool {
+        self.step == WizardStep::Done
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,10 +319,17 @@ mod tests {
 
     fn healthy() -> SystemFacts {
         SystemFacts {
-            wayland_session: true, hyprland_running: true, waybar_running: true,
-            theme_set: true, audio_server: true, network_up: true,
-            disk_free_gib: 200, disk_total_gib: 500, updates_pending: 0,
-            secure_boot: true, battery_pct: Some(80),
+            wayland_session: true,
+            hyprland_running: true,
+            waybar_running: true,
+            theme_set: true,
+            audio_server: true,
+            network_up: true,
+            disk_free_gib: 200,
+            disk_total_gib: 500,
+            updates_pending: 0,
+            secure_boot: true,
+            battery_pct: Some(80),
         }
     }
 
@@ -267,16 +350,24 @@ mod tests {
         f.hyprland_running = false;
         f.audio_server = false;
         f.disk_free_gib = 10; // 98% full
-        // Act
+                              // Act
         let results = doctor(&f);
         let s = summarize(&results);
         // Assert
-        assert!(results.iter().any(|r| r.name == "hyprland" && r.severity == Severity::Fail));
-        assert!(results.iter().any(|r| r.name == "audio" && r.severity == Severity::Warn));
-        assert!(results.iter().any(|r| r.name == "disk" && r.severity == Severity::Fail));
+        assert!(results
+            .iter()
+            .any(|r| r.name == "hyprland" && r.severity == Severity::Fail));
+        assert!(results
+            .iter()
+            .any(|r| r.name == "audio" && r.severity == Severity::Warn));
+        assert!(results
+            .iter()
+            .any(|r| r.name == "disk" && r.severity == Severity::Fail));
         assert!(s.fail >= 2);
         // fixes are present for failures
-        assert!(results.iter().filter(|r| r.severity != Severity::Pass)
+        assert!(results
+            .iter()
+            .filter(|r| r.severity != Severity::Pass)
             .all(|r| r.fix.is_some()));
     }
 
@@ -296,7 +387,8 @@ mod tests {
     fn test_disk_threshold_boundaries_aaa() {
         // Arrange & Act & Assert: 85% boundary is warn not fail
         let mut f = healthy();
-        f.disk_free_gib = 75; f.disk_total_gib = 500; // 85% used
+        f.disk_free_gib = 75;
+        f.disk_total_gib = 500; // 85% used
         let r = doctor(&f).into_iter().find(|r| r.name == "disk").unwrap();
         assert_eq!(r.severity, Severity::Warn);
         f.disk_free_gib = 20; // 96%
@@ -323,12 +415,14 @@ mod tests {
     fn test_wizard_back_navigation_aaa() {
         // Arrange
         let mut w = Wizard::new();
-        w.next(); w.next(); // at Keyboard
-        // Act
+        w.next();
+        w.next(); // at Keyboard
+                  // Act
         w.back();
         // Assert
         assert_eq!(w.step, WizardStep::Locale);
-        w.back(); w.back();
+        w.back();
+        w.back();
         assert_eq!(w.step, WizardStep::Welcome); // clamps at start
     }
 
@@ -338,7 +432,10 @@ mod tests {
         let mut f = healthy();
         f.battery_pct = Some(10);
         // Act
-        let r = doctor(&f).into_iter().find(|r| r.name == "battery").unwrap();
+        let r = doctor(&f)
+            .into_iter()
+            .find(|r| r.name == "battery")
+            .unwrap();
         // Assert
         assert_eq!(r.severity, Severity::Warn);
         // desktop (no battery) → no battery check

@@ -9,56 +9,79 @@ use std::env;
 use std::path::Path;
 
 fn detect_system_facts() -> SystemFacts {
-    let wayland_session =
-        env::var("WAYLAND_DISPLAY").is_ok()
-        || env::var("XDG_SESSION_TYPE").map(|v| v == "wayland").unwrap_or(false);
+    let wayland_session = env::var("WAYLAND_DISPLAY").is_ok()
+        || env::var("XDG_SESSION_TYPE")
+            .map(|v| v == "wayland")
+            .unwrap_or(false);
 
     let hyprland_running = env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok();
 
     let waybar_running = std::process::Command::new("pgrep")
-        .arg("-x").arg("waybar")
+        .arg("-x")
+        .arg("waybar")
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false);
 
-    let theme_set =
-        env::var("SIGMAOS_THEME").is_ok()
-        || Path::new(&format!("{}/.config/sigmaos/omarchy/wallust", env::var("HOME").unwrap_or_default())).exists();
+    let theme_set = env::var("SIGMAOS_THEME").is_ok()
+        || Path::new(&format!(
+            "{}/.config/sigmaos/omarchy/wallust",
+            env::var("HOME").unwrap_or_default()
+        ))
+        .exists();
 
     let audio_server = std::process::Command::new("pgrep")
-        .arg("-f").arg("pipewire|pulseaudio")
+        .arg("-f")
+        .arg("pipewire|pulseaudio")
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false);
 
-    let network_up = Path::new("/sys/class/net").read_dir()
-        .map(|mut d| d.any(|e| {
-            if let Ok(entry) = e {
-                entry.file_name().to_string_lossy() != "lo"
-            } else { false }
-        }))
+    let network_up = Path::new("/sys/class/net")
+        .read_dir()
+        .map(|mut d| {
+            d.any(|e| {
+                if let Ok(entry) = e {
+                    entry.file_name().to_string_lossy() != "lo"
+                } else {
+                    false
+                }
+            })
+        })
         .unwrap_or(false);
 
     let disk_free_gib = {
         let out = std::process::Command::new("df")
-            .arg("--output=avail").arg("-BG").arg("/")
+            .arg("--output=avail")
+            .arg("-BG")
+            .arg("/")
             .output()
             .ok();
         out.and_then(|o| {
-            String::from_utf8(o.stdout).ok()
-                .and_then(|s| s.lines().nth(1).and_then(|l| l.trim().trim_end_matches('G').parse::<u64>().ok()))
-        }).unwrap_or(0)
+            String::from_utf8(o.stdout).ok().and_then(|s| {
+                s.lines()
+                    .nth(1)
+                    .and_then(|l| l.trim().trim_end_matches('G').parse::<u64>().ok())
+            })
+        })
+        .unwrap_or(0)
     };
 
     let disk_total_gib = {
         let out = std::process::Command::new("df")
-            .arg("--output=size").arg("-BG").arg("/")
+            .arg("--output=size")
+            .arg("-BG")
+            .arg("/")
             .output()
             .ok();
         out.and_then(|o| {
-            String::from_utf8(o.stdout).ok()
-                .and_then(|s| s.lines().nth(1).and_then(|l| l.trim().trim_end_matches('G').parse::<u64>().ok()))
-        }).unwrap_or(1)
+            String::from_utf8(o.stdout).ok().and_then(|s| {
+                s.lines()
+                    .nth(1)
+                    .and_then(|l| l.trim().trim_end_matches('G').parse::<u64>().ok())
+            })
+        })
+        .unwrap_or(1)
     };
 
     let updates_pending = std::process::Command::new("checkupdates")
@@ -68,10 +91,16 @@ fn detect_system_facts() -> SystemFacts {
 
     let secure_boot = {
         let out = std::process::Command::new("mokutil")
-            .arg("--sb-state").output().ok();
-        out.map(|o| String::from_utf8(o.stdout).ok()
-            .map(|s| s.contains("SecureBoot enabled")).unwrap_or(false))
-            .unwrap_or(false)
+            .arg("--sb-state")
+            .output()
+            .ok();
+        out.map(|o| {
+            String::from_utf8(o.stdout)
+                .ok()
+                .map(|s| s.contains("SecureBoot enabled"))
+                .unwrap_or(false)
+        })
+        .unwrap_or(false)
     };
 
     let battery_pct = std::fs::read_to_string("/sys/class/power_supply/BAT0/capacity")
@@ -113,7 +142,15 @@ fn cmd_doctor() {
 fn cmd_theme(args: &[String]) {
     println!("\x1b[1;36m── Omarchy Theme Engine ────────────────────────────────────\x1b[0m");
     if args.is_empty() || args[0] == "list" {
-        let themes = ["catppuccin-mocha", "nord", "gruvbox", "tokyo-night", "dracula", "rose-pine", "everforest"];
+        let themes = [
+            "catppuccin-mocha",
+            "nord",
+            "gruvbox",
+            "tokyo-night",
+            "dracula",
+            "rose-pine",
+            "everforest",
+        ];
         for t in &themes {
             println!("  {}", t);
         }
@@ -177,11 +214,14 @@ fn main() {
 
     match args[0].as_str() {
         "doctor" => cmd_doctor(),
-        "theme" => cmd_theme(&args[1..].to_vec()),
+        "theme" => cmd_theme(&args[1..]),
         "run" => cmd_run(),
         "help" | "--help" | "-h" => print_help(),
         other => {
-            eprintln!("Unknown command: '{}'. Run 'omarchy help' for usage.", other);
+            eprintln!(
+                "Unknown command: '{}'. Run 'omarchy help' for usage.",
+                other
+            );
             std::process::exit(2);
         }
     }
