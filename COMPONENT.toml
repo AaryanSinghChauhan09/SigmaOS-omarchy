@@ -3,7 +3,7 @@ name = "SigmaOS-omarchy"
 tier = 2
 stability = "scaffold"
 language = "rust"
-description = "omarchy component"
+description = "SigmaOS SigmaOS-omarchy component"
 upstream = []
 
 [contract]
