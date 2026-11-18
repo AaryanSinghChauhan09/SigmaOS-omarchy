@@ -6,6 +6,9 @@
 //! pass/warn/fail with remediation hints, plus a first-boot wizard
 //! state machine. Replaces the generic `Tool` placeholder.
 
+pub mod hyprland;
+pub use hyprland::{HyprlandConfig, LayoutMode, WindowRule, WorkspaceRule};
+
 use std::fmt;
 
 /// Severity of a check result.
