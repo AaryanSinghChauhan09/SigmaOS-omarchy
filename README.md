@@ -1,8 +1,12 @@
-# Omarchy
+# SigmaOS
 
-Omarchy is a beautiful, fun & agentic Linux distribution by DHH.
+SigmaOS is a sovereign, auditable Arch-based Linux distribution — forked from
+[Omarchy](https://omarchy.org) (MIT License, © DHH and contributors) and
+rebranded/re-engineered under the SigmaOS identity: Rust-oriented core,
+safety-first install/rollback, explicit hardware support, predictable updates.
 
-Read more at [omarchy.org](https://omarchy.org).
+Upstream manual source remains in `manual/`. See `SIGMAOS_FORK.md` for the
+fork policy.
 
 ## The Omarchy Manual
 
